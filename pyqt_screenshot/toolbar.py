@@ -1,9 +1,9 @@
-from PyQt5.QtGui import QIcon
-from PyQt5.QtWidgets import QWidget, QPushButton, QButtonGroup, QFrame, QHBoxLayout
+from PySide6.QtGui import QIcon
+from PySide6.QtWidgets import QWidget, QPushButton, QButtonGroup, QFrame, QHBoxLayout
 
 from pyqt_screenshot import constant
 from pyqt_screenshot.constant import *
-from PyQt5.QtCore import pyqtSignal, Qt
+from PySide6.QtCore import Signal, Qt
 
 import resource.resource
 
@@ -12,7 +12,7 @@ class MyToolBar(QWidget):
     """ ToolBar widget """
 
     # signal
-    trigger = pyqtSignal(int)
+    trigger = Signal(int)
 
     def __init__(self, flags, parent=None):
         super(MyToolBar, self).__init__(parent)

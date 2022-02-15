@@ -1,8 +1,8 @@
 """
-constants
+截图常量
 """
 
-# screenshot flags
+# 截图类属性标识
 RECT            = 0b00000001
 ELLIPSE         = 0b00000010
 ARROW           = 0b00000100
@@ -14,7 +14,7 @@ SAVE_TO_FILE    = 0b10000000
 
 DEFAULT         = 0b01000000
 
-# action
+# 动作
 ACTION_SELECT = 0
 ACTION_MOVE_SELECTED = 1
 ACTION_RECT = 20
@@ -32,6 +32,8 @@ DRAW_ACTION = [ACTION_RECT, ACTION_ELLIPSE, ACTION_ARROW, ACTION_LINE, ACTION_FR
 
 
 class MousePosition:
+    """鼠标位置常量"""
+
     ON_THE_LEFT_SIDE = 30
     ON_THE_RIGHT_SIDE = 31
     ON_THE_UP_SIDE = 32
@@ -45,7 +47,7 @@ class MousePosition:
     WAIT_FOR_SELECT = 40
 
 
-# the range of judging if your mouse is on the border of selected area
+# 判断鼠标是否在选定截图区域边界
 ERRORRANGE = 6
 
 PENCOLOR = '#ff0000'  # red

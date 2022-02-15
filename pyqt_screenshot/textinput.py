@@ -1,13 +1,13 @@
-from PyQt5.QtCore import pyqtSignal, Qt
-from PyQt5.QtWidgets import QWidget, QVBoxLayout, QTextEdit, QHBoxLayout, QPushButton
+from PySide6.QtCore import Signal, Qt
+from PySide6.QtWidgets import QWidget, QVBoxLayout, QTextEdit, QHBoxLayout, QPushButton
 
 
 class TextInput(QWidget):
     # used when input text
 
-    inputChanged = pyqtSignal()
-    okPressed = pyqtSignal()
-    cancelPressed = pyqtSignal()
+    inputChanged = Signal()
+    okPressed = Signal()
+    cancelPressed = Signal()
 
     def __init__(self, parent=None):
         super(TextInput, self).__init__(parent)

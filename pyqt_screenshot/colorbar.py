@@ -1,18 +1,18 @@
-from PyQt5.QtGui import QFont, QIcon
-from PyQt5.QtWidgets import QWidget, QPushButton, QHBoxLayout, QFrame, QButtonGroup, QGridLayout, QFontDialog, \
+from PySide6.QtGui import QFont, QIcon
+from PySide6.QtWidgets import QWidget, QPushButton, QHBoxLayout, QFrame, QButtonGroup, QGridLayout, QFontDialog, \
     QSizePolicy
 
 from pyqt_screenshot.constant import *
-from PyQt5.QtCore import pyqtSignal, Qt
+from PySide6.QtCore import Signal, Qt
 
 from resource import resource
 
 
 class PenSetWidget(QWidget):
 
-    penSizeTrigger = pyqtSignal(int)
-    penColorTrigger = pyqtSignal(str)
-    fontChangeTrigger = pyqtSignal(QFont)
+    penSizeTrigger = Signal(int)
+    penColorTrigger = Signal(str)
+    fontChangeTrigger = Signal(QFont)
 
     def __init__(self, parent=None):
         super().__init__(parent)

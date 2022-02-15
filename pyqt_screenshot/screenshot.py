@@ -1,25 +1,27 @@
-#!/usr/bin/python3
-from PyQt5.QtCore import QRect, QPoint, QRectF, QSize, QLineF, QPointF, QEventLoop
-from PyQt5.QtGui import QColor, QPainterPath, QKeySequence, QGuiApplication, QPixmap, QPen, QBrush, QImage, QPainter, \
-    QPolygonF, QClipboard, QCursor, QMouseEvent
-from PyQt5.QtWidgets import QGraphicsView, QApplication, QGraphicsScene, QShortcut, QFileDialog, QDialog
+# coding=utf-8
 
-from pyqt_screenshot.toolbar import *
-from pyqt_screenshot.colorbar import *
-from pyqt_screenshot.textinput import *
+from PySide6.QtCore import Qt, QRect, QPoint, QRectF, QSize, QLineF, QPointF, QEventLoop, Signal
+from PySide6.QtGui import QColor, QPainterPath, QKeySequence, QGuiApplication, QPen, QBrush, QImage, \
+    QPolygonF, QClipboard, QCursor, QMouseEvent, QShortcut, QFont, QPixmap
+from PySide6.QtWidgets import QGraphicsView, QApplication, QGraphicsScene, QFileDialog, QWidget
 
-from math import *
+from pyqt_screenshot.constant import *
+from pyqt_screenshot.toolbar import MyToolBar
+from pyqt_screenshot.colorbar import PenSetWidget
+from pyqt_screenshot.textinput import TextInput
+
+from math import sqrt
 
 qtApp = None
 
 
 class Screenshot(QGraphicsView):
-    """ Main Class """
+    """截图操作类"""
 
-    screen_shot_grabed = pyqtSignal(QImage)
-    widget_closed = pyqtSignal()
+    screen_shot_grabed = Signal(QImage)
+    widget_closed = Signal()
 
-    def __init__(self, flags=constant.DEFAULT, parent=None):
+    def __init__(self, flags: int=DEFAULT, parent: QWidget=None):
         """
         flags: binary flags. see the flags in the constant.py
         """
@@ -66,8 +68,7 @@ class Screenshot(QGraphicsView):
         self.tooBar.trigger.connect(self.changeAction)
 
         self.penSetBar = None
-        if flags & constant.RECT or flags & constant.ELLIPSE or flags & constant.LINE or flags & constant.FREEPEN \
-                or flags & constant.ARROW or flags & constant.TEXT:
+        if flags & RECT or flags & ELLIPSE or flags & LINE or flags & FREEPEN or flags & ARROW or flags & TEXT:
             self.penSetBar = PenSetWidget(self)
             self.penSetBar.penSizeTrigger.connect(self.changePenSize)
             self.penSetBar.penColorTrigger.connect(self.changePenColor)
@@ -90,29 +91,36 @@ class Screenshot(QGraphicsView):
         self.redraw()
 
         QShortcut(QKeySequence('ctrl+s'), self).activated.connect(self.saveScreenshot)
+        QShortcut(QKeySequence('ctrl+z'), self).activated.connect(self.undoOperation)
         QShortcut(QKeySequence('esc'), self).activated.connect(self.close)
 
     @staticmethod
-    def take_screenshot(flags):
+    def take_screenshot(flags: int) -> QPixmap:
+        """執行截圖操作"""
         loop = QEventLoop()
         screen_shot = Screenshot(flags)
         screen_shot.show()
         screen_shot.widget_closed.connect(loop.quit)
 
-        loop.exec()
+        loop.exec()  # 阻塞，等待截圖完成
         img = screen_shot.target_img
         return img
 
     def getscreenshot(self):
+        """截取静态屏幕作为图片"""
+        # todo: 支持多屏截图
         screen = QGuiApplication.screenAt(QCursor.pos())
         self.screenPixel = screen.grabWindow(0)
 
-    def mousePressEvent(self, event):
+    def mousePressEvent(self, event: QMouseEvent):
         """
-        :type event: QMouseEvent
-        :param event:
-        :return:
+        鼠標按下時觸發事件
+        
+        確認事件類型(选定区域、准备区域、绘画)
         """
+        if event.button() == Qt.RightButton:
+            # todo: 选定区域外鼠标右键直接退出，区域内鼠标右键撤销上一步
+            return
         if event.button() != Qt.LeftButton:
             return
 
@@ -153,9 +161,9 @@ class Screenshot(QGraphicsView):
 
     def mouseMoveEvent(self, event: QMouseEvent):
         """
-        :type event: QMouseEvent
-        :param event:
-        :return:
+        鼠标移动时触发事件
+
+        执行事件类型指定的操作(直线、矩形、椭圆、文本等)
         """
         self.mousePoint = QPoint(event.globalPos().x(), event.globalPos().y())
 
@@ -266,12 +274,8 @@ class Screenshot(QGraphicsView):
                 self.drawFreeLine(self.pointPath, False)
                 self.redraw()
 
-    def mouseReleaseEvent(self, event):
-        """
-        :type event: QMouseEvent
-        :param event:
-        :return:
-        """
+    def mouseReleaseEvent(self, event: QMouseEvent):
+        """松开鼠标, 表示当前动作结束并确认"""
         if event.button() != Qt.LeftButton:
             return
 
@@ -304,12 +308,8 @@ class Screenshot(QGraphicsView):
                 self.drawFreeLine(self.pointPath, True)
                 self.redraw()
 
-    def detect_mouse_position(self, point):
-        """
-        :type point: QPoint
-        :param point: the mouse position you want to check
-        :return:
-        """
+    def detect_mouse_position(self, point: QPoint):
+        """当鼠标未按下时, 检测鼠标所在的区域位置"""
         if self.selected_area == QRect():
             self.mousePosition = MousePosition.OUTSIDE_AREA
             return
@@ -344,6 +344,7 @@ class Screenshot(QGraphicsView):
             self.mousePosition = MousePosition.INSIDE_AREA
 
     def setCursorStyle(self):
+        """设置鼠标样式"""
         if self.action in DRAW_ACTION:
             self.setCursor(Qt.CrossCursor)
             return
@@ -373,7 +374,8 @@ class Screenshot(QGraphicsView):
             pass
 
     def drawMagnifier(self):
-        # First, calculate the magnifier position due to the mouse position
+        """绘制放大镜"""
+        # todo: 重新resize选定区域时也需要放大镜
         watch_area_width = 16
         watch_area_height = 16
 
@@ -435,7 +437,7 @@ class Screenshot(QGraphicsView):
         # draw information
         self.graphics_scene.addRect(QRectF(magnifier_area.bottomLeft(),
                                            magnifier_area.bottomRight() + QPoint(0, font_area_height + 30)),
-                                    Qt.black,
+                                    QPen(Qt.black, 2),
                                     QBrush(Qt.black))
         rgb_info = self.graphics_scene.addSimpleText(
             ' Rgb: ({0}, {1}, {2})'.format(point_rgb.red(), point_rgb.green(), point_rgb.blue()))
@@ -451,7 +453,8 @@ class Screenshot(QGraphicsView):
     def get_scale(self):
         return self.devicePixelRatio()
 
-    def saveScreenshot(self, clipboard=False, fileName='screenshot.png', picType='png'):
+    def saveScreenshot(self, clipboard: bool=False, fileName: str='screenshot.png', picType: str='png'):
+        """保存截图结果"""
         fullWindow = QRect(0, 0, self.width() - 1, self.height() - 1)
         selected = QRect(self.selected_area)
         if selected.left() < 0:
@@ -469,19 +472,21 @@ class Screenshot(QGraphicsView):
         image = self.screenPixel.copy(source)
 
         if clipboard:
-            QGuiApplication.clipboard().setImage(QImage(image), QClipboard.Clipboard)
+            QGuiApplication.clipboard().setImage(image.toImage(), QClipboard.Clipboard)
         else:
             image.save(fileName, picType, 10)
         self.target_img = image
-        self.screen_shot_grabed.emit(QImage(image))
+        self.screen_shot_grabed.emit(image.toImage())
 
     def redraw(self):
+        """重新绘画全部內容"""
+        # todo: 所有的绘画图形需要可重新编辑和拖动
         self.graphics_scene.clear()
 
         # draw screenshot
         self.graphics_scene.addPixmap(self.screenPixel)
 
-        # prepare for drawing selected area
+        # 准备所选的绘画区域
         rect = QRectF(self.selected_area)
         rect = rect.normalized()
 
@@ -494,9 +499,8 @@ class Screenshot(QGraphicsView):
         bottom_middle_point = (bottom_left_point + bottom_right_point) / 2
         right_middle_point = (top_right_point + bottom_right_point) / 2
 
-        # draw the picture mask
+        # 添加截图蒙版和遮罩
         mask = QColor(0, 0, 0, 155)
-
         if self.selected_area == QRect():
             self.graphics_scene.addRect(0, 0, self.screenPixel.width(), self.screenPixel.height(), QPen(Qt.NoPen), mask)
         else:
@@ -504,18 +508,15 @@ class Screenshot(QGraphicsView):
             self.graphics_scene.addRect(0, top_left_point.y(), top_left_point.x(), rect.height(), QPen(Qt.NoPen), mask)
             self.graphics_scene.addRect(top_right_point.x(), top_right_point.y(),
                                         self.screenPixel.width() - top_right_point.x(),
-                                        rect.height(),
-                                        QPen(Qt.NoPen),
-                                        mask)
-            self.graphics_scene.addRect(0, bottom_left_point.y(),
-                                        self.screenPixel.width(), self.screenPixel.height() - bottom_left_point.y(),
+                                        rect.height(), QPen(Qt.NoPen), mask)
+            self.graphics_scene.addRect(0, bottom_left_point.y(),self.screenPixel.width(), 
+                                        self.screenPixel.height() - bottom_left_point.y(),
                                         QPen(Qt.NoPen), mask)
 
-        # draw the toolBar
+        # 绘制工具栏
         if self.action != ACTION_SELECT:
             spacing = 5
-            # show the toolbar first, then move it to the correct position
-            # because the width of it may be wrong if this is the first time it shows
+            # 先展示工具栏，然后将工具栏移动到正确位置，因为首次展示时工具栏的宽度可能是错误的
             self.tooBar.show()
 
             dest = QPointF(rect.bottomRight() - QPointF(self.tooBar.width(), 0) - QPointF(spacing, -spacing))
@@ -544,7 +545,7 @@ class Screenshot(QGraphicsView):
             if self.penSetBar is not None:
                 self.penSetBar.hide()
 
-        # draw the list
+        # 所有操作全部重新執行
         for step in self.drawListResult:
             self.drawOneStep(step)
 
@@ -556,11 +557,11 @@ class Screenshot(QGraphicsView):
         if self.selected_area != QRect():
             self.items_to_remove = []
 
-            # draw the selected rectangle
+            # 绘制截图区域的选定框
             pen = QPen(QColor(0, 255, 255), 2)
             self.items_to_remove.append(self.graphics_scene.addRect(rect, pen))
 
-            # draw the drag point
+            # 绘制截图区选定框的拖动点
             radius = QPoint(3, 3)
             brush = QBrush(QColor(0, 255, 255))
             self.items_to_remove.append(
@@ -581,7 +582,7 @@ class Screenshot(QGraphicsView):
             self.items_to_remove.append(
                 self.graphics_scene.addEllipse(QRectF(bottom_right_point - radius, bottom_right_point + radius), pen, brush))
 
-        # draw the textedit
+        # 绘制文字编辑控件
         if self.textPosition is not None:
             textSpacing = 50
             position = QPoint()
@@ -605,7 +606,7 @@ class Screenshot(QGraphicsView):
             self.textInput.show()
             # self.textInput.getFocus()
 
-        # draw the magnifier
+        # 绘制放大镜
         if self.action == ACTION_SELECT:
             self.drawMagnifier()
             if self.mousePressed:
@@ -614,11 +615,8 @@ class Screenshot(QGraphicsView):
         if self.action == ACTION_MOVE_SELECTED:
             self.drawSizeInfo()
 
-    # deal with every step in drawList
-    def drawOneStep(self, step):
-        """
-        :type step: tuple
-        """
+    def drawOneStep(self, step: list[object]):
+        """绘画drawListResult中的单个图形"""
         if step[0] == ACTION_RECT:
             self.graphics_scene.addRect(QRectF(QPointF(step[1], step[2]),
                                                QPointF(step[3], step[4])), step[5])
@@ -630,9 +628,9 @@ class Screenshot(QGraphicsView):
 
             linex = float(step[1] - step[3])
             liney = float(step[2] - step[4])
-            line = sqrt(pow(linex, 2) + pow(liney, 2))
+            line = sqrt(pow(linex, 2) + pow(liney, 2))  # 計算長度
 
-            # in case to divided by 0
+            # 长度为零直接返回
             if line == 0:
                 return
 
@@ -678,8 +676,8 @@ class Screenshot(QGraphicsView):
             textAdd.setBrush(QBrush(step[4]))
             self.textRect = textAdd.boundingRect()
 
-    # draw the size information on the top left corner
     def drawSizeInfo(self):
+        """左上角的区域大小的提示"""
         sizeInfoAreaWidth = 200
         sizeInfoAreaHeight = 30
         spacing = 5
@@ -696,7 +694,7 @@ class Screenshot(QGraphicsView):
         if sizeInfoArea.top() < spacing:
             sizeInfoArea.moveTop(spacing)
 
-        self.items_to_remove.append(self.graphics_scene.addRect(QRectF(sizeInfoArea), Qt.white, QBrush(Qt.black)))
+        self.items_to_remove.append(self.graphics_scene.addRect(QRectF(sizeInfoArea), QPen(Qt.white, 2), QBrush(Qt.black)))
 
         sizeInfo = self.graphics_scene.addSimpleText(
             '  {0} x {1}'.format(rect.width() * self.scale, rect.height() * self.scale))
@@ -704,7 +702,8 @@ class Screenshot(QGraphicsView):
         sizeInfo.setPen(QPen(QColor(255, 255, 255), 2))
         self.items_to_remove.append(sizeInfo)
 
-    def drawRect(self, x1, x2, y1, y2, result):
+    def drawRect(self, x1: int, x2: int, y1: int, y2: int, result: bool):
+        """鼠标放开时result=True, 否则为进行时, result为false"""
         rect = self.selected_area.normalized()
         tmpRect = QRect(QPoint(x1, x2), QPoint(y1, y2)).normalized()
         resultRect = rect & tmpRect
@@ -716,7 +715,7 @@ class Screenshot(QGraphicsView):
         else:
             self.drawListProcess = tmp
 
-    def drawEllipse(self, x1, x2, y1, y2, result):
+    def drawEllipse(self, x1: int, x2: int, y1: int, y2: int, result: bool):
         rect = self.selected_area.normalized()
         tmpRect = QRect(QPoint(x1, x2), QPoint(y1, y2)).normalized()
         resultRect = rect & tmpRect
@@ -728,7 +727,7 @@ class Screenshot(QGraphicsView):
         else:
             self.drawListProcess = tmp
 
-    def drawArrow(self, x1, x2, y1, y2, result):
+    def drawArrow(self, x1: int, x2: int, y1: int, y2: int, result: bool):
         rect = self.selected_area.normalized()
         if y1 <= rect.left():
             y1 = rect.left()
@@ -748,7 +747,7 @@ class Screenshot(QGraphicsView):
         else:
             self.drawListProcess = tmp
 
-    def drawLine(self, x1, x2, y1, y2, result):
+    def drawLine(self, x1: int, x2: int, y1: int, y2: int, result: bool):
         rect = self.selected_area.normalized()
         if y1 <= rect.left():
             y1 = rect.left()
@@ -767,7 +766,7 @@ class Screenshot(QGraphicsView):
         else:
             self.drawListProcess = tmp
 
-    def drawFreeLine(self, pointPath, result):
+    def drawFreeLine(self, pointPath: QPainterPath, result: bool):
         tmp = [ACTION_FREEPEN, QPainterPath(pointPath), QPen(QColor(self.penColorNow), int(self.penSizeNow))]
         if result:
             self.drawListResult.append(tmp)
@@ -815,8 +814,7 @@ class Screenshot(QGraphicsView):
         self.saveScreenshot(True)
         self.close()
 
-    # slots
-    def changeAction(self, nextAction):
+    def changeAction(self, nextAction: int):
         QApplication.clipboard().setText('Test in changeAction function')
 
         if nextAction == ACTION_UNDO:
@@ -833,11 +831,14 @@ class Screenshot(QGraphicsView):
 
         self.setFocus()
 
-    def changePenSize(self, nextPenSize):
+    def changePenSize(self, nextPenSize: int):
         self.penSizeNow = nextPenSize
 
-    def changePenColor(self, nextPenColor):
+    def changePenColor(self, nextPenColor: str):
         self.penColorNow = nextPenColor
+
+    def changeFont(self, font: QFont):
+        self.fontNow = font
 
     def cancelInput(self):
         self.drawListProcess = None
@@ -856,6 +857,3 @@ class Screenshot(QGraphicsView):
         self.textInput.hide()
         self.textInput.clearText()
         self.redraw()
-
-    def changeFont(self, font):
-        self.fontNow = font
