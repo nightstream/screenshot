@@ -1,14 +1,17 @@
-from PySide6.QtGui import QIcon
-from PySide6.QtWidgets import QWidget, QPushButton, QButtonGroup, QFrame, QHBoxLayout
+# coding=utf-8
+# todo: 配置资源路径
 
-from pyqt_screenshot import constant
-from pyqt_screenshot.constant import *
 from PySide6.QtCore import Signal, Qt
+from PySide6.QtGui import QIcon
+from PySide6.QtWidgets import QPushButton, \
+    QButtonGroup, QFrame, QHBoxLayout
 
-import resource.resource
+from . import constant
+from .basewidget import BaseWidget
+from resource import resource
 
 
-class MyToolBar(QWidget):
+class MyToolBar(BaseWidget):
     """ ToolBar widget """
 
     # signal
@@ -155,26 +158,26 @@ class MyToolBar(QWidget):
         :return:
         """
         if button == self.rectButton:
-            self.trigger.emit(ACTION_RECT)
+            self.trigger.emit(constant.ACTION_RECT)
         elif button == self.ellipseButton:
-            self.trigger.emit(ACTION_ELLIPSE)
+            self.trigger.emit(constant.ACTION_ELLIPSE)
         elif button == self.arrowButton:
-            self.trigger.emit(ACTION_ARROW)
+            self.trigger.emit(constant.ACTION_ARROW)
         elif button == self.lineButton:
-            self.trigger.emit(ACTION_LINE)
+            self.trigger.emit(constant.ACTION_LINE)
         elif button == self.freePenButton:
-            self.trigger.emit(ACTION_FREEPEN)
+            self.trigger.emit(constant.ACTION_FREEPEN)
         elif button == self.textButton:
-            self.trigger.emit(ACTION_TEXT)
+            self.trigger.emit(constant.ACTION_TEXT)
         else:
             pass
 
     def otherButtonsClicked(self):
         if self.sender() == self.undoButton:
-            self.trigger.emit(ACTION_UNDO)
+            self.trigger.emit(constant.ACTION_UNDO)
         elif self.sender() == self.cancelButton:
-            self.trigger.emit(ACTION_CANCEL)
+            self.trigger.emit(constant.ACTION_CANCEL)
         elif self.sender() == self.okButton:
-            self.trigger.emit(ACTION_SURE)
+            self.trigger.emit(constant.ACTION_SURE)
         elif self.sender() == self.saveButton:
-            self.trigger.emit(ACTION_SAVE)
+            self.trigger.emit(constant.ACTION_SAVE)

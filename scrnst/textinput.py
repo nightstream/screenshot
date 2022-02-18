@@ -1,8 +1,13 @@
+# coding=utf-8
+
 from PySide6.QtCore import Signal, Qt
-from PySide6.QtWidgets import QWidget, QVBoxLayout, QTextEdit, QHBoxLayout, QPushButton
+from PySide6.QtWidgets import QWidget, QVBoxLayout, QTextEdit, \
+    QHBoxLayout, QPushButton
+
+from .basewidget import BaseWidget
 
 
-class TextInput(QWidget):
+class TextInput(BaseWidget):
     # used when input text
 
     inputChanged = Signal()

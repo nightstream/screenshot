@@ -1,27 +1,36 @@
 # coding=utf-8
 
+from math import sqrt
+
 from PySide6.QtCore import Qt, QRect, QPoint, QRectF, QSize, QLineF, QPointF, QEventLoop, Signal
 from PySide6.QtGui import QColor, QPainterPath, QKeySequence, QGuiApplication, QPen, QBrush, QImage, \
     QPolygonF, QClipboard, QCursor, QMouseEvent, QShortcut, QFont, QPixmap
-from PySide6.QtWidgets import QGraphicsView, QApplication, QGraphicsScene, QFileDialog, QWidget
+from PySide6.QtWidgets import QApplication, QGraphicsScene, QFileDialog, QWidget
 
-from pyqt_screenshot.constant import *
-from pyqt_screenshot.toolbar import MyToolBar
-from pyqt_screenshot.colorbar import PenSetWidget
-from pyqt_screenshot.textinput import TextInput
+from PIL import ImageGrab
 
-from math import sqrt
+from .constant import RECT, ELLIPSE, ARROW, LINE, FREEPEN, TEXT, DEFAULT, ACTION_LINE, ACTION_FREEPEN, \
+    ACTION_SELECT, ACTION_MOVE_SELECTED, ACTION_RECT, ACTION_ELLIPSE, ACTION_ARROW, ACTION_TEXT, ACTION_UNDO, \
+    ACTION_SAVE, ACTION_CANCEL, ACTION_SURE, DRAW_ACTION, ERRORRANGE, PENCOLOR, PENSIZE, MousePosition
+from .basewidget import BaseGraphicsView
+from .toolbar import MyToolBar
+from .colorbar import PenSetWidget
+from .textinput import TextInput
 
 qtApp = None
 
 
-class Screenshot(QGraphicsView):
-    """截图操作类"""
+class Screenshot(BaseGraphicsView):
+    """
+    截图操作类
+
+    QGraphicscene类为管理大量二维图形项提供了界面, QGraphicsView类提供部件, 用于显示QGraphicscene的内容
+    """
 
     screen_shot_grabed = Signal(QImage)
     widget_closed = Signal()
 
-    def __init__(self, flags: int=DEFAULT, parent: QWidget=None):
+    def __init__(self, flags: int = DEFAULT, parent: QWidget = None):
         """
         flags: binary flags. see the flags in the constant.py
         """
@@ -33,11 +42,11 @@ class Screenshot(QGraphicsView):
         self.fontNow = QFont('Sans')
         self.clipboard = QApplication.clipboard()
 
-        self.drawListResult = []  # draw list that sure to be drew, [action, coord]
-        self.drawListProcess = None  # the process to the result
-        self.selected_area = QRect()  # a QRect instance which stands for the selected area
+        self.drawListResult = []  # 存放已经完成的绘制信息, 格式: [绘制类型, 坐标信息...]
+        self.drawListProcess = None  # 正在进行的绘制, 鼠标左键仍在拖动, mouseMoveEvent导致时刻重绘中
+        self.selected_area = QRect()  # 用户使用鼠标选定的截图/绘图区
         self.selectedAreaRaw = QRect()
-        self.mousePosition = MousePosition.OUTSIDE_AREA  # mouse position
+        self.mousePosition = MousePosition.OUTSIDE_AREA  # 按类型记录鼠标当前的位置
         self.screenPixel = None
         self.textRect = None
 
@@ -45,22 +54,23 @@ class Screenshot(QGraphicsView):
         self.action = ACTION_SELECT
         self.mousePoint = self.cursor().pos()
 
-        self.startX, self.startY = 0, 0  # the point where you start
-        self.endX, self.endY = 0, 0  # the point where you end
-        self.pointPath = QPainterPath()  # the point mouse passes, used by draw free line
+        self.startX, self.startY = 0, 0  # 鼠标按下时的起点信息
+        self.endX, self.endY = 0, 0  # 鼠标松开时的终点信息
+        self.pointPath = QPainterPath()  # 自由绘制时鼠标移动过的路径
         self.items_to_remove = []  # the items that should not draw on screenshot picture
         self.textPosition = None
 
-        # result
+        # 截图结果 QPixmap
         self.target_img = None
 
         # Init window
         self.getscreenshot()
-        self.setWindowFlags(Qt.WindowStaysOnTopHint | Qt.FramelessWindowHint)
+        # self.fullAllScreen()
+        self.setWindowFlags(Qt.WindowStaysOnTopHint | Qt.FramelessWindowHint)  # 窗口无边框且保持在最顶层
 
         self.setMouseTracking(True)
-        self.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
-        self.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        self.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)  # 关闭水平滚动
+        self.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOff)  # 关闭垂直滚动
         self.setContentsMargins(0, 0, 0, 0)
         self.setStyleSheet("QGraphicsView { border-style: none; }")
 
@@ -79,6 +89,7 @@ class Screenshot(QGraphicsView):
         self.textInput.cancelPressed.connect(self.cancelInput)
         self.textInput.okPressed.connect(self.okInput)
 
+        # 左上角强制为0, 0
         self.graphics_scene = QGraphicsScene(0, 0, self.screenPixel.width(), self.screenPixel.height())
 
         self.show()
@@ -110,12 +121,31 @@ class Screenshot(QGraphicsView):
         """截取静态屏幕作为图片"""
         # todo: 支持多屏截图
         screen = QGuiApplication.screenAt(QCursor.pos())
-        self.screenPixel = screen.grabWindow(0)
+        self.screenPixel = screen.grabWindow(0)  # 参数0代表截取全屏
+
+    def fullAllScreen(self):
+        """多屏全屏覆盖"""
+        mleft, mtop, mright, mbottom = 0, 0, 0, 0
+        for screen in QApplication.screens():
+            geo = screen.geometry()
+            if (left := geo.left()) < mleft:
+                mleft = left
+            if (top := geo.top()) < mtop:
+                mtop = top
+            if (right := geo.right()) > mright:
+                mright = right
+            if (bottom := geo.bottom()) > mbottom:
+                mbottom = bottom
+        self.topX, self.topY = mleft, mtop
+        self.logger.debug(f"top, left: {mtop} {mleft}")
+        self.move(mleft, mtop)  # 移动到最左上角
+        self.resize(mright - mleft, mbottom - mtop)  # 重定义到最大大小
+        self.screenPixel = ImageGrab.grab(all_screens=True).toqpixmap()
 
     def mousePressEvent(self, event: QMouseEvent):
         """
         鼠標按下時觸發事件
-        
+
         確認事件類型(选定区域、准备区域、绘画)
         """
         if event.button() == Qt.RightButton:
@@ -382,7 +412,7 @@ class Screenshot(QGraphicsView):
         cursor_pos = self.mousePoint
 
         watch_area = QRect(QPoint(cursor_pos.x() - watch_area_width / 2, cursor_pos.y() - watch_area_height / 2),
-                          QPoint(cursor_pos.x() + watch_area_width / 2, cursor_pos.y() + watch_area_height / 2))
+                           QPoint(cursor_pos.x() + watch_area_width / 2, cursor_pos.y() + watch_area_height / 2))
         if watch_area.left() < 0:
             watch_area.moveLeft(0)
             watch_area.moveRight(watch_area_width)
@@ -409,8 +439,8 @@ class Screenshot(QGraphicsView):
 
         cursor_size = 24
         magnifier_area = QRectF(QPoint(QCursor.pos().x() + cursor_size, QCursor.pos().y() + cursor_size),
-                               QPoint(QCursor.pos().x() + cursor_size + magnifier_area_width,
-                                      QCursor.pos().y() + cursor_size + magnifier_area_height))
+                                QPoint(QCursor.pos().x() + cursor_size + magnifier_area_width,
+                                       QCursor.pos().y() + cursor_size + magnifier_area_height))
         if magnifier_area.right() >= self.screenPixel.width():
             magnifier_area.moveLeft(QCursor.pos().x() - magnifier_area_width - cursor_size / 2)
         if magnifier_area.bottom() + font_area_height >= self.screenPixel.height():
@@ -453,7 +483,7 @@ class Screenshot(QGraphicsView):
     def get_scale(self):
         return self.devicePixelRatio()
 
-    def saveScreenshot(self, clipboard: bool=False, fileName: str='screenshot.png', picType: str='png'):
+    def saveScreenshot(self, clipboard: bool = False, fileName: str = 'screenshot.png', picType: str = 'png'):
         """保存截图结果"""
         fullWindow = QRect(0, 0, self.width() - 1, self.height() - 1)
         selected = QRect(self.selected_area)
@@ -469,7 +499,8 @@ class Screenshot(QGraphicsView):
         source = (fullWindow & selected)
         source.setTopLeft(QPoint(source.topLeft().x() * self.scale, source.topLeft().y() * self.scale))
         source.setBottomRight(QPoint(source.bottomRight().x() * self.scale, source.bottomRight().y() * self.scale))
-        image = self.screenPixel.copy(source)
+        image = self.grab(source)
+        # image = self.screenPixel.copy(source)
 
         if clipboard:
             QGuiApplication.clipboard().setImage(image.toImage(), QClipboard.Clipboard)
@@ -509,7 +540,7 @@ class Screenshot(QGraphicsView):
             self.graphics_scene.addRect(top_right_point.x(), top_right_point.y(),
                                         self.screenPixel.width() - top_right_point.x(),
                                         rect.height(), QPen(Qt.NoPen), mask)
-            self.graphics_scene.addRect(0, bottom_left_point.y(),self.screenPixel.width(), 
+            self.graphics_scene.addRect(0, bottom_left_point.y(), self.screenPixel.width(),
                                         self.screenPixel.height() - bottom_left_point.y(),
                                         QPen(Qt.NoPen), mask)
 
@@ -524,6 +555,7 @@ class Screenshot(QGraphicsView):
                 dest.setX(spacing)
             pen_set_bar_height = self.penSetBar.height() if self.penSetBar is not None else 0
             if dest.y() + self.tooBar.height() + pen_set_bar_height >= self.height():
+                # 边缘已到屏幕最下
                 if rect.top() - self.tooBar.height() - pen_set_bar_height < spacing:
                     dest.setY(rect.top() + spacing)
                 else:
@@ -584,7 +616,7 @@ class Screenshot(QGraphicsView):
 
         # 绘制文字编辑控件
         if self.textPosition is not None:
-            textSpacing = 50
+            # textSpacing = 50
             position = QPoint()
             if self.textPosition.x() + self.textInput.width() >= self.screenPixel.width():
                 position.setX(self.textPosition.x() - self.textInput.width())

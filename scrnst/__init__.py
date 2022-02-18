@@ -3,8 +3,10 @@
 from . import constant
 from .screenshot import Screenshot
 
-def makeScreenShot(flag: int=255):
+
+def makeScreenShot(flag: int = 255):
     window = Screenshot(flag)
     return window
+
 
 __all__ = ["constant", "Screenshot", "makeScreenShot"]

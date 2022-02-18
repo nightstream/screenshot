@@ -1,14 +1,17 @@
+# coding=utf-8
+# todo: 配置资源路径
+
+from PySide6.QtCore import Signal, Qt
 from PySide6.QtGui import QFont, QIcon
 from PySide6.QtWidgets import QWidget, QPushButton, QHBoxLayout, QFrame, QButtonGroup, QGridLayout, QFontDialog, \
     QSizePolicy
 
-from pyqt_screenshot.constant import *
-from PySide6.QtCore import Signal, Qt
-
+from .constant import PENCOLOR
+from .basewidget import BaseWidget
 from resource import resource
 
 
-class PenSetWidget(QWidget):
+class PenSetWidget(BaseWidget):
 
     penSizeTrigger = Signal(int)
     penColorTrigger = Signal(str)
@@ -115,23 +118,22 @@ class PenSetWidget(QWidget):
         self.colorGrid.setContentsMargins(5, 0, 5, 0)
         self.colorPick.setLayout(self.colorGrid)
 
-        self.colorList = [('white'       ,       '#ffffff'),
-                          ('red'         ,       '#ff0000'),
-                          ('green'       ,       '#00ff00'),
-                          ('blue'        ,       '#0000ff'),
-                          ('cyan'        ,       '#00ffff'),
-                          ('magenta'     ,       '#ff00ff'),
-                          ('yellow'      ,       '#ffff00'),
-                          ('gray'        ,       '#a0a0a4'),
-
-                          ('black'       ,       '#000000'),
-                          ('darkRed'     ,       '#800000'),
-                          ('darkGreen'   ,       '#008000'),
-                          ('darkBlue'    ,       '#000080'),
-                          ('darkCyan'    ,       '#008080'),
-                          ('darkMagenta' ,       '#800080'),
-                          ('darkYellow'  ,       '#808000'),
-                          ('darkGray'    ,       '#808080')]
+        self.colorList = [('white', '#ffffff'),
+                          ('red', '#ff0000'),
+                          ('green', '#00ff00'),
+                          ('blue', '#0000ff'),
+                          ('cyan', '#00ffff'),
+                          ('magenta', '#ff00ff'),
+                          ('yellow', '#ffff00'),
+                          ('gray', '#a0a0a4'),
+                          ('black', '#000000'),
+                          ('darkRed', '#800000'),
+                          ('darkGreen', '#008000'),
+                          ('darkBlue', '#000080'),
+                          ('darkCyan', '#008080'),
+                          ('darkMagenta', '#800080'),
+                          ('darkYellow', '#808000'),
+                          ('darkGray', '#808080')]
 
         self.generateButtons()
 
@@ -182,7 +184,7 @@ class PenSetWidget(QWidget):
         self.penSizeTrigger.emit(int(button.objectName()) * 2)
 
     def fontButtonClicked(self):
-        ok = True
+        # ok = True
         font = QFontDialog.getFont(self)
         if font[1]:
             self.changeFontButton.setText('{0} {1}'.format(font[0].family(),
