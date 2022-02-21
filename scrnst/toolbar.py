@@ -11,14 +11,14 @@ from .basewidget import BaseWidget
 from resource import resource
 
 
-class MyToolBar(BaseWidget):
+class ToolBar(BaseWidget):
     """ ToolBar widget """
 
     # signal
     trigger = Signal(int)
 
     def __init__(self, flags, parent=None):
-        super(MyToolBar, self).__init__(parent)
+        super(ToolBar, self).__init__(parent)
 
         self.setWindowFlags(Qt.ToolTip)
         self.paddingX = 5
