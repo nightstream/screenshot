@@ -8,7 +8,7 @@ from .basewidget import BaseWidget
 
 
 class TextInput(BaseWidget):
-    # used when input text
+    """文字输入控件"""
 
     inputChanged = Signal()
     okPressed = Signal()
@@ -48,7 +48,6 @@ class TextInput(BaseWidget):
     def clearText(self):
         self.textArea.clear()
 
-    # slots
     def textChanged_(self):
         self.inputChanged.emit()
 

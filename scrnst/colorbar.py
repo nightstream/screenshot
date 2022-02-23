@@ -3,12 +3,11 @@
 
 from PySide6.QtCore import Signal, Qt
 from PySide6.QtGui import QFont, QIcon
-from PySide6.QtWidgets import QWidget, QPushButton, QHBoxLayout, QFrame, QButtonGroup, QGridLayout, QFontDialog, \
-    QSizePolicy
+from PySide6.QtWidgets import QWidget, QPushButton, QHBoxLayout, QFrame, QButtonGroup, \
+    QGridLayout, QFontDialog, QSizePolicy
 
 from .constant import PENCOLOR
 from .basewidget import BaseWidget
-from resource import resource
 
 
 class PenSetWidget(BaseWidget):
@@ -33,10 +32,10 @@ class PenSetWidget(BaseWidget):
     def generateButtons(self, parent=None):
         """ Generate buttons due to colorDic """
         self.colorButtons = []
-        for color in self.colorList:
+        for _, colorvalue in self.colorList:
             button = QPushButton(parent)
-            button.setObjectName(color[0])
-            button.setStyleSheet('QPushButton { background-color: %s; }' % color[1])
+            button.setObjectName(colorvalue)
+            button.setStyleSheet('QPushButton { background-color: %s; }' % colorvalue)
             button.setFixedSize(self.iconWidth / 2, self.iconHeight / 2)
             button.setCheckable(True)
             self.colorButtons.append(button)
@@ -161,30 +160,21 @@ class PenSetWidget(BaseWidget):
                                                        self.fontDialog.currentFont().pointSize()))
         self.changeFontButton.clicked.connect(self.fontButtonClicked)
 
-    def showFontWidget(self):
-        self.changeFontButton.show()
-        self.penSize1.hide()
-        self.penSize2.hide()
-        self.penSize3.hide()
-
-    def showPenWidget(self):
-        self.changeFontButton.hide()
-        self.penSize1.show()
-        self.penSize2.show()
-        self.penSize3.show()
-
-    # slots
     def colorButtonToggled(self, button):
+        """选择颜色"""
+        self.logger.info(f"已设置画笔颜色: {button.objectName()}")
         self.presentColor.setStyleSheet('QPushButton { background-color: %s; }' % button.objectName())
         self.penColorTrigger.emit(button.objectName())
 
     def sizeButtonToggled(self, button):
+        """设置画笔粗细"""
+        self.logger.info(f"已设置画笔粗细: {button.objectName()}")
         self.penSizeTrigger.emit(int(button.objectName()) * 2)
 
     def fontButtonClicked(self):
-        # ok = True
-        font = QFontDialog.getFont(self)
-        if font[1]:
-            self.changeFontButton.setText('{0} {1}'.format(font[0].family(),
-                                                           font[0].pointSize()))
-            self.fontChangeTrigger.emit(font[0])
+        flag, font = QFontDialog.getFont(self)
+        if flag:
+            finfo = '{0} {1}'.format(font.family(), font.pointSize())
+            self.changeFontButton.setText(finfo)
+            self.fontChangeTrigger.emit(font)
+            self.logger.info(f"已设置画笔字体和大小: {finfo}")

@@ -1,6 +1,7 @@
 # coding=utf-8
 
 from . import constant
+from resource import resource
 from .screenshot import Screenshot
 
 

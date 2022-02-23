@@ -4,7 +4,7 @@ from math import sqrt
 
 from PySide6.QtCore import Qt, QRect, QPoint, QRectF, QSize, QLineF, QPointF, QEventLoop, Signal
 from PySide6.QtGui import QColor, QPainterPath, QKeySequence, QGuiApplication, QPen, QBrush, QImage, \
-    QPolygonF, QClipboard, QCursor, QMouseEvent, QShortcut, QFont, QPixmap, QPainter
+    QPolygonF, QClipboard, QMouseEvent, QShortcut, QFont, QPixmap, QPainter
 from PySide6.QtWidgets import QApplication, QGraphicsScene, QFileDialog, QWidget
 
 from .constant import RECT, ELLIPSE, ARROW, LINE, FREEPEN, TEXT, DEFAULT, ACTION_LINE, ACTION_FREEPEN, \
@@ -565,12 +565,11 @@ class Screenshot(BaseGraphicsView):
 
             if self.penSetBar is not None:
                 self.penSetBar.show()
-                self.penSetBar.move(dest.toPoint() + QPoint(0, self.tooBar.height() + spacing))
-
-                if self.action == ACTION_TEXT:
-                    self.penSetBar.showFontWidget()
-                else:
-                    self.penSetBar.showPenWidget()
+                offsetX = self.tooBar.width() - self.penSetBar.width()
+                offsetY = self.tooBar.height() + spacing
+                if dest.x() + offsetX < spacing + self.topX:
+                    offsetX = spacing + self.topX - dest.x()
+                self.penSetBar.move(dest.toPoint() + QPoint(offsetX, offsetY))
         else:
             self.tooBar.hide()
 
@@ -616,7 +615,6 @@ class Screenshot(BaseGraphicsView):
 
         # 绘制文字编辑控件
         if self.textPosition is not None:
-            # textSpacing = 50
             position = QPoint()
             if self.textPosition.x() + self.textInput.width() >= self.screenPixel.width():
                 position.setX(self.textPosition.x() - self.textInput.width())
@@ -634,9 +632,8 @@ class Screenshot(BaseGraphicsView):
                 else:
                     position.setY(self.textPosition.y())
 
-            self.textInput.move(position)
+            self.textInput.move(position + QPoint(self.topX, self.topY))
             self.textInput.show()
-            # self.textInput.getFocus()
 
         # 绘制放大镜
         if self.action == ACTION_SELECT:

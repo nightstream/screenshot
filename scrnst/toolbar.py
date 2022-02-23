@@ -8,7 +8,6 @@ from PySide6.QtWidgets import QPushButton, \
 
 from . import constant
 from .basewidget import BaseWidget
-from resource import resource
 
 
 class ToolBar(BaseWidget):
