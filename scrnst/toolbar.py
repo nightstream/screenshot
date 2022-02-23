@@ -21,7 +21,6 @@ class ToolBar(BaseWidget):
         super(ToolBar, self).__init__(parent)
 
         self.setWindowFlags(Qt.ToolTip)
-        self.paddingX = 5
         self.paddingY = 2
         self.iconWidth = self.iconHeight = 28
         self.setFixedHeight(self.iconHeight + 2 * self.paddingY)

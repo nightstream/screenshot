@@ -20,8 +20,6 @@ class PenSetWidget(BaseWidget):
     def __init__(self, parent=None):
         super().__init__(parent)
 
-        self.paddingX = 5
-        self.paddingY = 2
         self.iconWidth = self.iconHeight = 24
         self.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Fixed)
         self.setWindowFlags(Qt.ToolTip)

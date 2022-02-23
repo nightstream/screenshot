@@ -109,6 +109,7 @@ class Screenshot(BaseGraphicsView):
 
     def makeScreenPixel(self, tw: int, th: int, screenImgs: list):
         """拼接创建背景图"""
+        self.logger.info("拼接多屏图像, 共{}屏。".format(len(screenImgs)))
         self.screenPixel = QPixmap(QSize(tw, th))  # QPixmap，整体屏幕图
         painter = QPainter(self.screenPixel)
         for x, y, img in screenImgs:
@@ -117,10 +118,10 @@ class Screenshot(BaseGraphicsView):
 
     def getscreenshot(self):
         """截取静态屏幕作为图片"""
-        # todo: 支持多屏截图
+        self.logger.info("获取全部现有屏幕的图像, 确认成像区域大小")
         mleft, mtop, mright, mbottom = 0, 0, 0, 0
         screenImgs = []
-        for i, screen in enumerate(QGuiApplication.screens()):
+        for screen in QGuiApplication.screens():
             left, top, right, bottom = 0, 0, 0, 0
             geo = screen.geometry()
             if (left := geo.left()) < mleft:
@@ -133,10 +134,11 @@ class Screenshot(BaseGraphicsView):
                 mbottom = bottom
             screenImgs.append((left, top, screen.grabWindow(0)))
         self.topX, self.topY = mleft, mtop
-        self.logger.debug(f"top, left: {mtop} {mleft}")
+        width, height = mright - mleft, mbottom - mtop
         self.move(mleft, mtop)  # 移动到最左上角
-        self.resize(mright - mleft, mbottom - mtop)  # 重定义到最大大小
-        self.makeScreenPixel(mright - mleft, mbottom - mtop, screenImgs)
+        self.resize(width, height)  # 重定义到最大大小
+        self.makeScreenPixel(width, height, screenImgs)
+        self.logger.info(f"全屏截取完毕, 左上角坐标: ({mleft}, {mtop}), 宽高: ({width}, {height})")
 
     def mousePressEvent(self, event: QMouseEvent):
         """
@@ -546,10 +548,9 @@ class Screenshot(BaseGraphicsView):
             spacing = 5  # 设置间距
             self.tooBar.show()
 
-            # dest 工具条左上角坐标：操作区右下角 - (工具条宽度，)
-            self.logger.info(f"{bottom_right_point}")
-            dest = QPointF(bottom_right_point - QPointF(self.tooBar.width() - spacing - self.topX, spacing))
-            if dest.x() < spacing + self.topX:
+            # dest 工具条左上角坐标：操作区右下角 - (工具条宽度 - 间距 - 偏移量X，- 间距 - 偏移量Y)
+            dest = QPointF(bottom_right_point - QPointF(self.tooBar.width() + spacing - self.topX, - spacing - self.topY))
+            if dest.x() < spacing + self.topX:  # 超过左部边界，将左坐标设为左边界
                 dest.setX(spacing + self.topX)
             pen_set_bar_height = self.penSetBar.height() if self.penSetBar is not None else 0
             if dest.y() + self.tooBar.height() + pen_set_bar_height >= self.height():
